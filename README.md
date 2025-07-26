@@ -82,6 +82,7 @@ income-verification/
 ## 🔧 Available Make Commands
 
 ### Setup & Installation
+
 - `make venv` - Create virtual environment
 - `make install` - Install dependencies in venv
 - `make dev-setup` - Complete development environment setup
@@ -89,6 +90,7 @@ income-verification/
 - `make activate` - Show venv activation command
 
 ### Development
+
 - `make test` - Run tests with coverage
 - `make lint` - Code linting
 - `make format` - Code formatting with Black
@@ -96,11 +98,13 @@ income-verification/
 - `make check` - All quality checks
 
 ### Execution
+
 - `make run` - Process documents
 - `make status` - System status
 - `make validate` - Validate configuration
 
 ### Maintenance
+
 - `make clean` - Clean temporary files
 - `make clean-all` - Clean everything including venv
 - `make requirements` - Update requirements.txt
@@ -125,9 +129,9 @@ Edit `config.toml` to customize:
 
 ```toml
 [ai]
-provider = "openai"                 # or "anthropic"
-model = "gpt-4o-mini"              # or "claude-3-5-sonnet-20241022"
-api_key_file = ".secrets/openai_key"
+provider = "openai"                   # or "anthropic"
+model = "gpt-4.1-mini"                # or "claude-sonnet-4-20250514"
+api_key_file = ".secrets/openai_key"  # or .secrets/anthropic_key
 
 [processing]
 docs_folder = "incoming_docs"
@@ -150,6 +154,7 @@ ocr_quality_threshold = 0.8
 ## 🔍 Features
 
 ### Document Processing
+
 - ✅ Multi-format support (PDF, PNG, JPG, JPEG)
 - ✅ Automatic deduplication
 - ✅ OCR quality assessment
@@ -157,6 +162,7 @@ ocr_quality_threshold = 0.8
 - ✅ Date-based archiving
 
 ### AI-Powered Analysis
+
 - ✅ Document classification (payslip, bank statement, other)
 - ✅ Structured data extraction
 - ✅ Employee and employer information
@@ -164,12 +170,14 @@ ocr_quality_threshold = 0.8
 - ✅ Confidence scoring per field
 
 ### Verification Engine
+
 - ✅ Document recency validation
 - ✅ Consecutive period checking
 - ✅ Qualified accountant signature verification
 - ✅ Mathematical consistency validation
 
 ### Fraud Detection
+
 - ✅ Text consistency analysis
 - ✅ Font inconsistency detection
 - ✅ Calculation validation
@@ -192,12 +200,12 @@ Results are saved as JSON files with this structure:
   },
   "employer": {
     "name": "Acme Corporation Ltd",
-    "confidence": 0.90
+    "confidence": 0.9
   },
   "income": [
     {
       "type": "salary",
-      "amount_gbp": 3000.00,
+      "amount_gbp": 3000.0,
       "confidence": 0.95
     }
   ],
@@ -239,6 +247,7 @@ make test
 ## 🐛 Troubleshooting
 
 ### Virtual Environment Issues
+
 ```bash
 # If venv gets corrupted, rebuild it
 make clean-all
@@ -246,18 +255,21 @@ make dev-setup
 ```
 
 ### Missing Dependencies
+
 ```bash
 # Reinstall all dependencies
 make install
 ```
 
 ### Permission Issues
+
 ```bash
 # Ensure proper permissions on secrets
 chmod 600 .secrets/*
 ```
 
 ### API Key Issues
+
 ```bash
 # Validate your configuration
 make validate
@@ -266,6 +278,7 @@ make validate
 ## 📝 Development
 
 ### Adding New Features
+
 1. Create feature branch
 2. Add code in appropriate service module
 3. Add comprehensive tests
@@ -273,6 +286,7 @@ make validate
 5. Update documentation
 
 ### Code Style
+
 - Black formatting (100 char line length)
 - Flake8 linting
 - MyPy type checking
