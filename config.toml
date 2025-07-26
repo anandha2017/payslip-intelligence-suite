@@ -1,0 +1,26 @@
+[ai]
+provider = "openai"
+model = "gpt-4o-mini"
+api_key_file = ".secrets/openai_key"
+
+[processing]
+docs_folder = "incoming_docs"
+archive_folder = "archive"
+max_file_size_mb = 50
+supported_formats = ["pdf", "png", "jpg", "jpeg"]
+
+[verification]
+max_age_months = 6
+min_consecutive_periods = 3
+require_qualified_accountant_signature = true
+
+[fraud_detection]
+confidence_threshold = 0.7
+font_consistency_check = true
+total_validation = true
+ocr_quality_threshold = 0.8
+
+[output]
+log_level = "INFO"
+json_indent = 2
+console_summary = true
