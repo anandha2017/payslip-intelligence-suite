@@ -51,6 +51,26 @@ class OpenAIClient(AIClient):
             else:
                 raise
     
+    def _calculate_openai_cost(self, usage, model: str) -> float:
+        """Calculate cost for OpenAI API call based on token usage."""
+        # Pricing as of 2025 (per 1M tokens)
+        pricing = {
+            "gpt-4o-mini": {"input": 0.15, "output": 0.60},  # $0.15 / $0.60 per 1M tokens
+            "gpt-4o": {"input": 2.50, "output": 10.00},
+            "gpt-4": {"input": 30.00, "output": 60.00},
+            "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+        }
+        
+        model_key = model.lower()
+        if model_key not in pricing:
+            # Default to gpt-4o-mini pricing if model not found
+            model_key = "gpt-4o-mini"
+        
+        input_cost = (usage.prompt_tokens / 1_000_000) * pricing[model_key]["input"]
+        output_cost = (usage.completion_tokens / 1_000_000) * pricing[model_key]["output"]
+        
+        return input_cost + output_cost
+    
     def analyze_document(self, 
                         image_data: bytes, 
                         prompt: str, 
@@ -91,6 +111,13 @@ class OpenAIClient(AIClient):
                 temperature=0.1
             )
             
+            # Log token usage and cost
+            if hasattr(response, 'usage') and response.usage:
+                cost = self._calculate_openai_cost(response.usage, self.config.ai.model)
+                logger.info(f"OpenAI API call - Input: {response.usage.prompt_tokens} tokens, "
+                          f"Output: {response.usage.completion_tokens} tokens, "
+                          f"Total: {response.usage.total_tokens} tokens, Cost: ${cost:.4f}")
+            
             return response.choices[0].message.content
             
         except Exception as e:
@@ -123,6 +150,25 @@ class AnthropicClient(AIClient):
                 )
             else:
                 raise
+    
+    def _calculate_anthropic_cost(self, usage, model: str) -> float:
+        """Calculate cost for Anthropic API call based on token usage."""
+        # Pricing as of 2025 (per 1M tokens)
+        pricing = {
+            "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},  # $3 / $15 per 1M tokens
+            "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
+            "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
+        }
+        
+        model_key = model.lower()
+        if model_key not in pricing:
+            # Default to Claude 3.5 Sonnet pricing if model not found
+            model_key = "claude-3-5-sonnet-20241022"
+        
+        input_cost = (usage.input_tokens / 1_000_000) * pricing[model_key]["input"]
+        output_cost = (usage.output_tokens / 1_000_000) * pricing[model_key]["output"]
+        
+        return input_cost + output_cost
     
     def analyze_document(self, 
                         image_data: bytes, 
@@ -165,6 +211,13 @@ class AnthropicClient(AIClient):
                     }
                 ]
             )
+            
+            # Log token usage and cost
+            if hasattr(response, 'usage') and response.usage:
+                cost = self._calculate_anthropic_cost(response.usage, self.config.ai.model)
+                logger.info(f"Anthropic API call - Input: {response.usage.input_tokens} tokens, "
+                          f"Output: {response.usage.output_tokens} tokens, "
+                          f"Total: {response.usage.input_tokens + response.usage.output_tokens} tokens, Cost: ${cost:.4f}")
             
             return response.content[0].text
             

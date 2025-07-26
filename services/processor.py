@@ -16,6 +16,7 @@ from .extractor import DocumentExtractor
 from .verifier import DocumentVerifier
 from .fraud_detector import FraudDetector
 from .ai_client import create_ai_client
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,9 @@ class PayslipProcessor:
         self.verifier = DocumentVerifier(self.config)
         self.fraud_detector = FraudDetector(self.config)
         
+        # Cost tracking
+        self.total_cost = 0.0
+        
         # Setup logging
         self._setup_logging()
     
@@ -48,6 +52,29 @@ class PayslipProcessor:
                 logging.FileHandler('payslip_processor.log')
             ]
         )
+        
+        # Setup log handler to capture costs
+        self._setup_cost_tracking()
+    
+    def _setup_cost_tracking(self):
+        """Setup logging handler to capture API costs."""
+        class CostTrackingHandler(logging.Handler):
+            def __init__(self, processor):
+                super().__init__()
+                self.processor = processor
+            
+            def emit(self, record):
+                if hasattr(record, 'msg') and 'Cost: $' in str(record.msg):
+                    # Extract cost from log message
+                    cost_match = re.search(r'Cost: \$(\d+\.\d+)', str(record.msg))
+                    if cost_match:
+                        cost = float(cost_match.group(1))
+                        self.processor.total_cost += cost
+        
+        # Add cost tracking handler to AI client logger
+        ai_logger = logging.getLogger('services.ai_client')
+        cost_handler = CostTrackingHandler(self)
+        ai_logger.addHandler(cost_handler)
     
     def process_documents(self) -> BatchResult:
         """Process all documents in the incoming folder."""
@@ -213,6 +240,7 @@ class PayslipProcessor:
         stats_table.add_row("Successful Extractions", str(batch_result.successful_extractions))
         stats_table.add_row("Failed Extractions", str(batch_result.failed_extractions))
         stats_table.add_row("Processing Time", str(datetime.now() - batch_result.processing_timestamp))
+        stats_table.add_row("API Cost", f"${self.total_cost:.4f}")
         
         self.console.print(stats_table)
         
@@ -226,15 +254,43 @@ class PayslipProcessor:
         docs_table.add_column("Employee", style="green")
         docs_table.add_column("Gross Pay", style="yellow")
         docs_table.add_column("Confidence", style="magenta")
-        docs_table.add_column("Fraud Signals", style="red")
+        docs_table.add_column("Fraud Signals", style="red", width=40)
         
         for analysis in batch_result.documents:
             file_name = Path(analysis.processing_metadata.file_path).name
             employee_name = analysis.employee.name or "Unknown"
             gross_pay = f"£{analysis.total_gross_pay:.2f}" if analysis.total_gross_pay else "N/A"
             confidence = f"{analysis.overall_confidence:.1%}"
-            fraud_count = len(analysis.fraud_signals)
-            fraud_display = f"{fraud_count} signals" if fraud_count > 0 else "Clean"
+            
+            # Format fraud signals for display
+            if analysis.fraud_signals:
+                # Convert underscored signals to readable format
+                readable_signals = []
+                for signal in analysis.fraud_signals:
+                    readable = signal.replace('_', ' ').title()
+                    readable_signals.append(readable)
+                
+                # Join signals with comma and space, wrap if too long
+                fraud_display = ", ".join(readable_signals)
+                if len(fraud_display) > 60:
+                    # Split long lists across lines
+                    words = fraud_display.split(", ")
+                    lines = []
+                    current_line = ""
+                    for word in words:
+                        if len(current_line + word) > 35:
+                            if current_line:
+                                lines.append(current_line.rstrip(", "))
+                                current_line = word + ", "
+                            else:
+                                lines.append(word)
+                        else:
+                            current_line += word + ", "
+                    if current_line:
+                        lines.append(current_line.rstrip(", "))
+                    fraud_display = "\n".join(lines)
+            else:
+                fraud_display = "Clean"
             
             docs_table.add_row(
                 file_name[:20] + "..." if len(file_name) > 23 else file_name,
