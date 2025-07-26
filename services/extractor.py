@@ -47,23 +47,38 @@ class DocumentExtractor:
     def convert_pdf_to_image(self, file_path: Path, page_num: int = 0) -> bytes:
         """Convert PDF page to image bytes."""
         try:
-            import fitz  # PyMuPDF - optional dependency for better PDF rendering
-            doc = fitz.open(str(file_path))
-            page = doc[page_num]
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x scale for better quality
-            img_data = pix.tobytes("png")
-            doc.close()
-            return img_data
+            from pdf2image import convert_from_path
+            # Convert first page of PDF to PIL Image
+            images = convert_from_path(
+                str(file_path), 
+                first_page=page_num + 1, 
+                last_page=page_num + 1,
+                dpi=200  # High DPI for better quality
+            )
+            
+            if images:
+                # Convert PIL Image to bytes
+                img_bytes = io.BytesIO()
+                images[0].save(img_bytes, format='PNG')
+                return img_bytes.getvalue()
+            else:
+                raise ValueError("No images generated from PDF")
+                
         except ImportError:
             # Fallback: use PIL to create a placeholder image
-            logger.warning("PyMuPDF not available, using placeholder image")
+            logger.warning("pdf2image not available, using placeholder image")
             img = Image.new('RGB', (800, 1000), color='white')
             img_bytes = io.BytesIO()
             img.save(img_bytes, format='PNG')
             return img_bytes.getvalue()
         except Exception as e:
             logger.error(f"Error converting PDF to image: {e}")
-            raise
+            # Fallback: use PIL to create a placeholder image
+            logger.warning("PDF conversion failed, using placeholder image")
+            img = Image.new('RGB', (800, 1000), color='white')
+            img_bytes = io.BytesIO()
+            img.save(img_bytes, format='PNG')
+            return img_bytes.getvalue()
     
     def load_image_file(self, file_path: Path) -> bytes:
         """Load image file as bytes."""
@@ -142,7 +157,7 @@ class DocumentExtractor:
                 Employee, Employer, PayPeriod, Income, Verifications,
                 DocumentType, IncomeType, PayFrequency
             )
-            from datetime import datetime
+            from datetime import datetime, date as date_type
             
             # Document type
             doc_type = DocumentType(ai_response.get('document_type', 'other'))
@@ -165,17 +180,24 @@ class DocumentExtractor:
                 confidence=emp_data.get('confidence', 0.0)
             )
             
-            # Pay period
+            # Pay period with safe date parsing
             period_data = ai_response.get('pay_period', {})
+            
+            def safe_parse_date(date_str):
+                """Safely parse date string, return None if invalid."""
+                if not date_str or date_str == "null":
+                    return None
+                try:
+                    return datetime.strptime(date_str, '%Y-%m-%d').date()
+                except (ValueError, TypeError):
+                    return None
+            
             pay_period = PayPeriod(
-                start_date=datetime.strptime(period_data['start_date'], '%Y-%m-%d').date() 
-                    if period_data.get('start_date') else None,
-                end_date=datetime.strptime(period_data['end_date'], '%Y-%m-%d').date()
-                    if period_data.get('end_date') else None,
-                pay_date=datetime.strptime(period_data['pay_date'], '%Y-%m-%d').date()
-                    if period_data.get('pay_date') else None,
+                start_date=safe_parse_date(period_data.get('start_date')),
+                end_date=safe_parse_date(period_data.get('end_date')),
+                pay_date=safe_parse_date(period_data.get('pay_date')),
                 frequency=PayFrequency(period_data['frequency'])
-                    if period_data.get('frequency') else None,
+                    if period_data.get('frequency') and period_data['frequency'] != "null" else None,
                 confidence=period_data.get('confidence', 0.0)
             )
             
@@ -255,6 +277,11 @@ class DocumentExtractor:
             
         except Exception as e:
             logger.error(f"Error processing document {file_path}: {e}")
+            # Import models for error case
+            from .models import (
+                Employee, Employer, PayPeriod, Verifications,
+                DocumentType
+            )
             # Return a minimal analysis with error info
             return DocumentAnalysis(
                 document_type=DocumentType.OTHER,
