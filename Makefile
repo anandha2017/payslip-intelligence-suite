@@ -66,8 +66,23 @@ venv:
 		echo "  source $(VENV_PATH)/bin/activate"; \
 	fi
 
+# Check system dependencies
+check-system-deps:
+	@echo "🔍 Checking system dependencies..."
+	@if command -v brew >/dev/null 2>&1; then \
+		echo "✅ Homebrew found"; \
+		if ! brew list libmagic >/dev/null 2>&1; then \
+			echo "📦 Installing libmagic via Homebrew..."; \
+			brew install libmagic; \
+		else \
+			echo "✅ libmagic already installed"; \
+		fi; \
+	else \
+		echo "⚠️  Homebrew not found. Installing python-magic-bin instead of python-magic"; \
+	fi
+
 # Installation and setup
-install: check-venv
+install: check-venv check-system-deps
 	@echo "📦 Installing dependencies in virtual environment..."
 	$(PIP) install --upgrade pip
 	$(PIP) install -r requirements.txt

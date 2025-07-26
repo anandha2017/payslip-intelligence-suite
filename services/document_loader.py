@@ -6,8 +6,15 @@ import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import List, Set, Tuple
-import magic
 import logging
+
+# Try to import magic, fall back to extension-based detection
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    MAGIC_AVAILABLE = False
+    logging.warning("python-magic not available, using extension-based file type detection")
 
 from .config import Config
 from .models import ProcessingMetadata
@@ -38,26 +45,28 @@ class DocumentLoader:
     
     def is_supported_format(self, file_path: Path) -> bool:
         """Check if file format is supported."""
-        try:
-            mime_type = magic.from_file(str(file_path), mime=True)
-            extension = file_path.suffix.lower().lstrip('.')
+        extension = file_path.suffix.lower().lstrip('.')
+        
+        # Check by extension first
+        if extension in self.config.processing.supported_formats:
+            return True
             
-            # Check by extension first
-            if extension in self.config.processing.supported_formats:
-                return True
-            
-            # Check by MIME type
-            supported_mimes = {
-                'application/pdf',
-                'image/png',
-                'image/jpeg',
-                'image/jpg'
-            }
-            return mime_type in supported_mimes
-            
-        except Exception as e:
-            logger.warning(f"Could not determine file type for {file_path}: {e}")
-            return False
+        # If magic is available, also check MIME type
+        if MAGIC_AVAILABLE:
+            try:
+                mime_type = magic.from_file(str(file_path), mime=True)
+                supported_mimes = {
+                    'application/pdf',
+                    'image/png',
+                    'image/jpeg',
+                    'image/jpg'
+                }
+                return mime_type in supported_mimes
+            except Exception as e:
+                logger.warning(f"Magic file type detection failed for {file_path}: {e}")
+        
+        # Fallback to extension-only check
+        return extension in ['pdf', 'png', 'jpg', 'jpeg']
     
     def is_valid_file_size(self, file_path: Path) -> bool:
         """Check if file size is within limits."""

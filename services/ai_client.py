@@ -30,7 +30,26 @@ class OpenAIClient(AIClient):
     
     def __init__(self, config: Config):
         self.config = config
-        self.client = openai.OpenAI(api_key=config.get_api_key())
+        try:
+            # Initialize with minimal parameters to avoid proxy issues
+            self.client = openai.OpenAI(
+                api_key=config.get_api_key(),
+                timeout=60.0,
+                max_retries=2
+            )
+        except TypeError as e:
+            if "proxies" in str(e):
+                # Fallback for proxy-related initialization issues
+                logger.warning("Proxy parameter issue detected, trying alternative initialization")
+                import httpx
+                # Create a custom HTTP client without proxy parameters
+                http_client = httpx.Client(timeout=60.0)
+                self.client = openai.OpenAI(
+                    api_key=config.get_api_key(),
+                    http_client=http_client
+                )
+            else:
+                raise
     
     def analyze_document(self, 
                         image_data: bytes, 
@@ -84,7 +103,26 @@ class AnthropicClient(AIClient):
     
     def __init__(self, config: Config):
         self.config = config
-        self.client = anthropic.Anthropic(api_key=config.get_api_key())
+        try:
+            # Initialize with minimal parameters to avoid proxy issues
+            self.client = anthropic.Anthropic(
+                api_key=config.get_api_key(),
+                timeout=60.0,
+                max_retries=2
+            )
+        except TypeError as e:
+            if "proxies" in str(e):
+                # Fallback for proxy-related initialization issues
+                logger.warning("Proxy parameter issue detected, trying alternative initialization")
+                import httpx
+                # Create a custom HTTP client without proxy parameters
+                http_client = httpx.Client(timeout=60.0)
+                self.client = anthropic.Anthropic(
+                    api_key=config.get_api_key(),
+                    http_client=http_client
+                )
+            else:
+                raise
     
     def analyze_document(self, 
                         image_data: bytes, 

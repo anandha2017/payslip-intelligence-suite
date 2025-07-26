@@ -217,7 +217,7 @@ def setup():
         model = click.prompt("OpenAI model", default="gpt-4o-mini")
         api_key_file = ".secrets/openai_key"
     else:
-        model = click.prompt("Anthropic model", default="claude-3-haiku-20240307")
+        model = click.prompt("Anthropic model", default="claude-3-5-sonnet-20241022")
         api_key_file = ".secrets/anthropic_key"
     
     # Create secrets directory

@@ -109,13 +109,13 @@ income-verification/
 
 ### 1. API Key Setup
 
-The system supports both OpenAI and Anthropic:
+The system supports both OpenAI and Anthropic providers:
 
 ```bash
-# For OpenAI
+# For OpenAI (default)
 echo "your-openai-api-key-here" > .secrets/openai_key
 
-# For Anthropic  
+# For Anthropic (alternative)
 echo "your-anthropic-api-key-here" > .secrets/anthropic_key
 ```
 
@@ -126,7 +126,7 @@ Edit `config.toml` to customize:
 ```toml
 [ai]
 provider = "openai"                 # or "anthropic"
-model = "gpt-4o-mini"              # or "claude-3-haiku-20240307"
+model = "gpt-4o-mini"              # or "claude-3-5-sonnet-20241022"
 api_key_file = ".secrets/openai_key"
 
 [processing]
