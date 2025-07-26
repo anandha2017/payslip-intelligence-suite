@@ -151,6 +151,133 @@ total_validation = true
 ocr_quality_threshold = 0.8
 ```
 
+## 📄 Document Processing Pipeline
+
+### **How Document Processing Works**
+
+The system uses a sophisticated dual-extraction approach to analyze financial documents:
+
+#### **1. PDF to Image Conversion (Not Direct Upload)**
+```
+PDF Input → [pdf2image + poppler] → High-resolution PNG (200 DPI) → Base64 encoding → AI Vision API
+```
+
+**Why convert to image?**
+- **AI Model Compatibility**: OpenAI GPT-4 Vision and Anthropic Claude only accept images (PNG, JPEG, WebP, GIF) - **not PDF files**
+- **Visual Fraud Detection**: Captures formatting, layout, fonts, and visual elements that text extraction misses
+- **Comprehensive Analysis**: Enables detection of visual tampering that pure text analysis cannot catch
+
+#### **2. Dual Extraction Strategy**
+```
+PDF Input → [Text Extraction via PyPDF2] + [Image Conversion via pdf2image] → Combined AI Analysis
+```
+
+**Text Path**: Extracts structured data and readable content
+**Visual Path**: Captures visual authenticity and formatting
+**Combined**: Both sent to AI for comprehensive fraud detection
+
+#### **3. AI Analysis Process**
+The AI receives a multi-modal payload:
+```json
+{
+  "role": "user", 
+  "content": [
+    {"type": "text", "text": "Financial document analysis prompt..."},
+    {"type": "text", "text": "Extracted text: [PyPDF2 output]"},
+    {"type": "image_url", "url": "data:image/png;base64,[visual content]"}
+  ]
+}
+```
+
+#### **4. Cost Structure**
+- **Input tokens** (~2,880): Image + text + analysis prompt
+- **Output tokens** (~391): Structured JSON response
+- **Total cost**: ~$0.0007 per document (using gpt-4o-mini)
+- **Efficiency**: Enterprise-grade analysis for less than $0.001 per document
+
+## 🔍 Fraud Detection System
+
+### **Multi-Layer Fraud Detection Architecture**
+
+#### **Layer 1: AI-Based Visual Analysis**
+The AI vision model analyzes both visual and textual content for:
+- **Font inconsistencies** (different fonts mixed in same document)
+- **Layout anomalies** (misaligned text, irregular spacing)
+- **Visual artifacts** (signs of digital manipulation)
+- **Calculation errors** (totals don't match line items)
+- **Document quality** (poor scans, re-scanning artifacts)
+
+#### **Layer 2: Heuristic Text Validation**
+Post-AI processing performs targeted checks:
+
+**Text Pattern Analysis:**
+```python
+suspicious_patterns = {
+    'altered_fonts': [r'[A-Za-z]+\d+[A-Za-z]+'],  # Mixed alphanumeric
+    'formatting_issues': [r'\s{3,}'],             # Excessive whitespace
+    'ocr_errors': ['|||', '###', 'l1l']           # Common OCR artifacts
+}
+```
+
+**Mathematical Validation:**
+- Income items vs declared totals (tolerance: 2p)
+- Unrealistic amounts (flags >£50k per period)
+- Negative amount detection
+
+**Date Logic Validation:**
+- Future date detection
+- Logical ordering (start < end < pay date)
+- Age validation (configurable threshold)
+
+#### **Layer 3: Employer & Identity Verification**
+
+**Employer Legitimacy:**
+- Company suffix validation (Ltd, PLC, LLP, etc.)
+- Suspicious name patterns (cash, temp, agency, etc.)
+- Single-word employer detection
+
+**NI Number Validation:**
+- Format validation: `[A-Z]{2}\d{6}[A-Z]`
+- Fake number detection: `AA000000A`, `XX123456X`, etc.
+
+#### **Layer 4: Cross-Document Analysis**
+When processing multiple documents:
+- **Template reuse detection** using text similarity algorithms
+- **Income consistency analysis** (identifies outliers >20% deviation)
+- **Consecutive period validation** ensuring proper sequence
+
+### **Why Image Analysis is Superior to Direct PDF Processing**
+
+#### **Visual Fraud Techniques Detected:**
+1. **Font Substitution**: Changing numbers using slightly different fonts
+2. **Digital White-out**: Covering original text with white boxes
+3. **Copy-paste Tampering**: Combining elements from multiple documents
+4. **Re-scanning Artifacts**: Evidence of print-and-scan to hide digital edits
+5. **Layout Inconsistencies**: Misaligned elements indicating manual editing
+
+#### **Real-World Example:**
+A fraudster changes "£1,200" to "£12,000":
+- **Text extraction** shows: "£12,000" (the altered text)
+- **Image analysis** detects: Font inconsistency, alignment issues, visual artifacts
+
+#### **Alternative Approaches Considered:**
+
+**❌ Pure Text Extraction:**
+- Misses visual tampering
+- Can't detect font inconsistencies
+- Vulnerable to sophisticated PDF editing
+
+**❌ PDF Structure Analysis:**
+- AI models don't support PDF parsing natively
+- Complex implementation required
+- Still misses visual fraud indicators
+
+**✅ Hybrid OCR + Vision (Current Approach):**
+- Leverages standard AI vision APIs
+- Detects both textual and visual fraud
+- Comprehensive verification of content and authenticity
+- Cost-effective using existing AI infrastructure
+
 ## 🔍 Features
 
 ### Document Processing
